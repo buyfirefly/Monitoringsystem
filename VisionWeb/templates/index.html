@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>情绪识别测试录制网站 V1.21</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            background-image: url('{{ url_for("static", filename="BackGround.jpg") }}');    /* 背景图片路径 */
+            background-size: cover;                                                         /* 让背景图片覆盖整个页面 */
+            background-repeat: no-repeat;                                                   /* 防止背景图片重复 */
+            background-position: center;                                                    /* 将背景图片居中 */
+            margin: 0;
+            padding: 20px;
+        }
+        #main-content {
+            flex: 3;
+            margin-right: 20px;
+            margin-bottom: 20px;
+            position: relative;
+        }
+        #sidebar {
+            flex: 1;
+            background-color: #f0f0f0;
+            padding: 15px;
+            border-radius: 8px;
+            min-width: 250px;
+            height: 450px;          /* 设置侧栏高度 */
+            overflow-y: auto;       /* 添加垂直滚动条 */
+            margin-top: 90px;       /* 向下移动侧栏 */
+        }
+        #video-container {
+            margin: 20px 0;
+            position: relative;
+        }
+        #video-preview {
+            width: 100%;
+            height: 480px;          /* 设置视频窗口高度 */
+            border: 1px solid #ccc;
+            background-color: #000;
+            transform: scaleX(-1);  /* 镜像翻转 */
+            object-fit: contain;    /* 保持视频宽高比，但不填满容器而是优先保障完整展现 */
+        }
+        #controls {
+            margin: 20px 0;
+            display: flex;
+            align-items: center;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 0 10px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #stopBtn {
+            background-color: #f44336;
+        }
+        #stopBtn:hover {
+            background-color: #d32f2f;
+        }
+        #status {
+            margin: 20px 0;
+            font-size: 18px;
+            min-height: 24px;
+        }
+        #server-response {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #e8f5e9;
+            border-radius: 4px;
+            display: block;
+            overflow-y: auto;
+            height: 300px;
+        }
+        #server-response p {
+            margin: 5px 0;
+            white-space: pre-wrap;
+        }
+        #upload-area {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+        }
+        #file-upload {
+            margin: 10px 0;
+        }
+        #logo {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 200px;   /* 宽度 */
+            height: auto;   /* 比例 */
+            z-index: 100;   /* 图层 */
+        }
+        #server-response-container h2 {
+            margin-top: -10px;
+        }
+        #manual-upload-container h2 {
+            margin-bottom: -10px;
+        }
+    </style>
+</head>
+<body>
+    <img id="logo" src="{{ url_for('static', filename='logo.png') }}" alt="Logo">
+    <div id="custom-text" style="position: absolute; left: 1200px; top: 600px; font-size: 16px; color: #666;">开发者：王肇麒，石垒，伍勤辉，王宇杰</div>
+    <div id="main-content">
+        <h1>情绪识别测试录制网站 V1.21</h1>
+        <div id="video-container">
+            <video id="video-preview" autoplay muted></video>
+        </div>
+        <div id="controls">
+            <button id="startBtn">开始录制</button>
+            <button id="stopBtn" disabled>停止录制</button>
+        </div>
+
+        <div id="status"></div>
+
+        <div id="upload-area">
+            <div id="manual-upload-container">
+                <h2>手动上传视频</h2>
+                <div id="file-upload">
+                    <input type="file" id="video-file" accept="video/*">
+                    <button id="manualUploadBtn">上传</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="sidebar">
+        <div id="server-response-container">
+            <h2>服务器返回数据</h2>
+            <div id="server-response"></div>
+        </div>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const videoPreview = document.getElementById('video-preview');
+            const statusText = document.getElementById('status');
+            const serverResponse = document.getElementById('server-response');
+            const startBtn = document.getElementById('startBtn');
+            const stopBtn = document.getElementById('stopBtn');
+            const videoFile = document.getElementById('video-file');
+            const manualUploadBtn = document.getElementById('manualUploadBtn');
+
+            let mediaRecorder;
+            let isRecording = false;
+            let socket;
+            let recordingStartTime;
+            let chunkNumber = 0;
+            let chunkInterval;
+
+            function connectSocket() {
+                socket = io('http://localhost:5000', {
+                    transports: ['websocket'],
+                    reconnectionAttempts: 5
+                });
+                socket.on('connect', () => {
+                    console.log('Connected to Socket.IO server');
+                });
+                socket.on('server_message', (data) => {
+                    displayMessage(data.message, data.color);
+                });
+            }
+
+            async function initCamera() {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                    videoPreview.srcObject = stream;
+                    statusText.textContent = '摄像头已启用，准备录制...';
+                } catch (error) {
+                    statusText.textContent = '无法访问摄像头: ' + error.message;
+                }
+            }
+
+            // 录制功能函数
+            function startRecording() {
+                const localRecordedChunks = [];
+                clearInterval(chunkInterval);                                   // 计时器清零
+
+                const stream = videoPreview.srcObject;                          // 获取当前摄像头视频流
+                const mimeType = 'video/mp4;codecs=avc1.42E01E,mp4a.40.2';      // 选择 MP4 格式
+                mediaRecorder = new MediaRecorder(stream, { mimeType });
+
+                // 将视频块添加到 recordedChunks 数组里
+                mediaRecorder.ondataavailable = (event) => {
+                    console.log('[ondataavailable] 事件触发，大小:', event.data.size);
+                    if (event.data.size > 0) {
+                        localRecordedChunks.push(event.data);
+                    }
+                };
+
+                // 打包为视频文件 blob 并交给 uploadVideoChunk() 上传；
+                // 当调用 mediaRecorder.stop() 时（无论是1分钟满了，还是点击“停止”按钮），这个回调就会被触发
+                mediaRecorder.onstop = () => {
+                    console.log('[onstop] 事件触发，localrecordedChunks 长度:', localRecordedChunks.length);
+                    const blob = new Blob(localRecordedChunks, { type: 'video/mp4' });
+                    uploadVideoChunk(blob);
+                };
+
+                mediaRecorder.start();
+                isRecording = true;
+                recordingStartTime = Date.now();
+                chunkInterval = setInterval(checkRecordingDuration, 1000);
+
+                // 更新 UI 状态
+                statusText.textContent = '正在录制...';
+                startBtn.disabled = true;
+                stopBtn.disabled = false;
+            }
+
+            // 每秒检查一次当前录制是否已达 60 秒
+            function checkRecordingDuration() {
+                if (!isRecording) return;
+                const currentTime = Date.now();
+                const elapsedTime = (currentTime - recordingStartTime) / 1000;
+                if (elapsedTime >= 60) {
+                    stopRecording(false);
+                    startRecording();
+                }
+            }
+
+            // 停止当前的录制
+            function stopRecording() {
+                if (mediaRecorder) {
+                    mediaRecorder.stop();
+                    isRecording = false;
+                    clearInterval(chunkInterval);
+                }
+            }
+
+            // 视频文件上传
+            function uploadVideoChunk(blob) {
+                const formData = new FormData();
+                chunkNumber++;
+                const filename = `recorded-video-${chunkNumber}.mp4`;
+
+                formData.append('video', blob, filename);
+
+                statusText.textContent = '上传中...';
+
+                fetch('http://localhost:5000/upload', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('上传失败');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    statusText.textContent = '上传成功!';
+                })
+                .catch(error => {
+                    statusText.textContent = '上传失败: ' + error.message;
+                });
+            }
+
+            function uploadSelectedVideo() {
+                const file = videoFile.files[0];
+                if (!file) {
+                    statusText.textContent = '请选择一个视频文件';
+                    return;
+                }
+                const formData = new FormData();
+                formData.append('video', file);
+
+                statusText.textContent = '上传中...';
+                manualUploadBtn.disabled = true;
+
+                fetch('http://localhost:5000/upload', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('上传失败');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    statusText.textContent = '上传成功!';
+                    manualUploadBtn.disabled = false;
+                })
+                .catch(error => {
+                    statusText.textContent = '上传失败: ' + error.message;
+                    manualUploadBtn.disabled = false;
+                });
+            }
+
+            function displayMessage(message, color) {
+                const p = document.createElement('p');
+                p.textContent = message;
+                p.style.color = color;
+                serverResponse.appendChild(p);
+                serverResponse.scrollTop = serverResponse.scrollHeight;
+            }
+
+            startBtn.addEventListener('click', () => {
+                startRecording();
+            });
+
+            stopBtn.addEventListener('click', () => {
+                stopRecording();
+            });
+
+            manualUploadBtn.addEventListener('click', () => {
+                uploadSelectedVideo();
+            });
+
+            connectSocket();
+            initCamera();
+        });
+    </script>
+</body>
+</html>
