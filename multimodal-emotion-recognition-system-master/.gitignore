@@ -1,0 +1,47 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*.so
+
+# Virtual environments
+.venv/
+env/
+venv/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Python IDEs
+.vscode/
+.idea/
+
+# Mac/Linux
+.DS_Store
+*.swp
+
+# Logs and debug
+*.log
+
+# Model checkpoints and outputs
+*.pth
+*.pt
+checkpoints/
+runs/
+outputs/
+
+# Data
+data/
+*.tar.gz
+*.zip
+
+# Compiled files
+*.o
+*.obj
+*.exe
+
+# Project-specific
+*.wav
+*.jpg
+*.png
+*.npy
+*.pt

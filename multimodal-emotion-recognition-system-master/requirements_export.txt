@@ -1,0 +1,34 @@
+# 模型导出所需依赖
+# Model Export Dependencies
+
+# 核心框架
+torch>=1.12.0
+torchvision>=0.13.0
+
+# 模型导出格式支持
+onnx>=1.12.0
+onnxruntime>=1.12.0
+# onnxruntime-gpu>=1.12.0  # 如果需要GPU加速的ONNX推理
+
+# 数据处理
+numpy>=1.21.0
+
+# 可视化和分析
+matplotlib>=3.5.0
+seaborn>=0.11.0
+
+# 工具库
+tqdm>=4.64.0
+pathlib2>=2.3.0  # Python < 3.4 兼容性
+
+# 可选：模型优化
+# tensorrt>=8.0.0  # NVIDIA TensorRT (需要NVIDIA GPU)
+# torch2trt>=0.3.0  # PyTorch to TensorRT converter
+
+# 可选：其他推理引擎
+# openvino>=2022.1.0  # Intel OpenVINO
+# tflite-runtime>=2.8.0  # TensorFlow Lite
+
+# 开发工具
+jupyter>=1.0.0
+ipywidgets>=7.6.0

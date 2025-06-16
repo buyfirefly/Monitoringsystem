@@ -1,0 +1,55 @@
+# 实时摄像头情绪监测依赖包
+# =====================================
+
+# 核心依赖
+opencv-python>=4.5.0          # 计算机视觉和摄像头处理
+numpy>=1.21.0                  # 数值计算
+
+# 深度学习框架（完整版需要）
+torch>=1.9.0                   # PyTorch深度学习框架
+torchvision>=0.10.0           # 计算机视觉工具
+
+# 音频处理（完整版需要）
+pyaudio>=0.2.11               # 实时音频捕获
+librosa>=0.8.1                # 音频特征提取
+soundfile>=0.10.3             # 音频文件处理
+
+# 数据处理和可视化
+matplotlib>=3.3.0             # 绘图和可视化
+seaborn>=0.11.0               # 统计图表
+pandas>=1.3.0                 # 数据处理
+scipy>=1.7.0                  # 科学计算
+
+# 模型推理（可选）
+onnxruntime>=1.8.0            # ONNX模型推理
+# onnxruntime-gpu>=1.8.0      # GPU加速版本（可选）
+
+# 工具库
+tqdm>=4.62.0                  # 进度条
+pathlib2>=2.3.6               # 路径处理（Python < 3.6）
+Pillow>=8.3.0                 # 图像处理
+
+# 系统依赖说明
+# =====================================
+# macOS:
+#   brew install portaudio        # PyAudio依赖
+#   brew install ffmpeg           # 音频处理依赖
+#
+# Ubuntu/Debian:
+#   sudo apt-get install portaudio19-dev python3-pyaudio
+#   sudo apt-get install ffmpeg
+#
+# Windows:
+#   通过conda安装: conda install pyaudio
+#   或下载预编译包: https://www.lfd.uci.edu/~gohlke/pythonlibs/#pyaudio
+
+# 可选的GPU加速
+# =====================================
+# 如果有NVIDIA GPU，可以安装CUDA版本的PyTorch:
+# pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+
+# 开发和调试工具（可选）
+# =====================================
+# jupyter>=1.0.0               # Jupyter Notebook
+# ipython>=7.0.0               # 交互式Python
+# tensorboard>=2.7.0           # 可视化工具
